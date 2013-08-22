@@ -1,6 +1,6 @@
-# A Very Quick Tour of Parsec
+# Parsec
 
-For the LA Haskell User Group
+## Setup
 
     :set +m
     :set -XNoMonomorphismRestriction
