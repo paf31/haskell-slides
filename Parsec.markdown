@@ -10,6 +10,9 @@ For the LA Haskell User Group
 ## Types
 
     :i Parsec ParsecT
+    :i State
+    
+# Escaping the Monad
 
     :t runParser
     :t runParsecT
@@ -31,10 +34,13 @@ For the LA Haskell User Group
 
 - `fmap f p` - Parse using `p` and apply `f` to the result
 - `p >>= q` - Parse using `p` first, and then using `q`, possibly using the result of `p`.
+- `do { x ← … ; y ← … ; … }` - Combine several parse results
 
 ## Modifying Parsers
   
     :t many
+    :t count
+    :t between
     :t chainl
     :t chainr
 
@@ -71,6 +77,11 @@ For the LA Haskell User Group
 
     :t sepBy
     :t (<|>)
+    
+## Handling Failure
+
+    :t (<?>)
+    :t try
 
 ### Example - Handling Multiple First Names
 
@@ -95,38 +106,32 @@ For the LA Haskell User Group
 
     parseTest phoneBook "Freeman, Phillip Antony (555-555-5555)"
 
-## Handling Failure
+## User State
 
-    :t (<?>)
-    :t try
-
-## State
+Parsec(T) is a state monad, and will carry around user state as well as the parser''s internal state.
 
     :t getState
     :t setState
     :t modifyState
 
-### Example - Matching Parentheses
+### Example - Non-Decreasing Sequences
 
-    let openParen = do
-      char '('
-      modifyState succ
-      return ()
-
-    let closeParen = do
-      char ')'
-      s <- getState
-      (guard $ s > 0) <?> "Unexpected )"
-      modifyState pred
-      return ()
-
-    let expr = do
-      many $ choice [openParen, closeParen]
-      s <- getState
-      (guard $ s == 0) <?> "Expected )"
-      return ()
-
-    runPT expr 0 "" "(()())"
+    let
+      atoi d   = read [d] :: Int
+      number   = fmap atoi digit
+      number'' = do
+        n <- number
+        modifyState $ max n
+        return n
+      monotone = many $ do
+        max <- getState
+        n <- number''
+        if n < max
+        then fail $ "Decreasing pair: " ++ show (max, n)
+        else return n
+        
+    runParser monotone 0 "" "0123"
+    runParser monotone 0 "" "0121"
 
 ## Expression Parsers
 
@@ -142,11 +147,11 @@ For the LA Haskell User Group
       bracket = between (char '(') (char ')') numExpr
       atom = bracket <|> number
       numExpr = buildExpressionParser
-        [ [ Infix (do { char '/'; return (/) }) AssocRight
-          , Infix (do { char '*'; return (*) }) AssocRight ]
-        , [ Infix (do { char '+'; return (+) }) AssocRight
-          , Infix (do { char '-'; return (-) }) AssocRight ]
-        , [ Prefix $ do { char '-'; return negate } ]
+        [ [ Infix (char '/' >> return (/)) AssocRight
+          , Infix (char '*' >> return (*)) AssocRight ]
+        , [ Infix (char '+' >> return (+)) AssocRight
+          , Infix (char '-' >> return (-)) AssocRight ]
+        , [ Prefix $ char '-' >> return negate ]
         ] atom
       
 ## Language Definitions
@@ -158,10 +163,10 @@ For the LA Haskell User Group
     let langDef = haskellStyle -- { ... }
 
     let
-       parser = makeTokenParser langDef
+       parser         = makeTokenParser langDef
        stringLiteral' = stringLiteral parser
-       integer' = integer parser
-       float' = float parser
+       integer'       = integer parser
+       float'         = float parser
        -- ...
 
     parseTest stringLiteral' "\"Test\""
