@@ -132,6 +132,18 @@ Parsec(T) is a state monad, and will carry around user state as well as the pars
         
     runParser monotone 0 "" "0123"
     runParser monotone 0 "" "0121"
+    
+### Example - Print Debugging
+
+ParsecT allows us to lift monadic actions into the parser monad, so we can, for example, trace the steps taken during backtracking:
+
+    import Control.Monad.Trans
+
+    let
+      char' c = lift (print c) >> char c
+      chars = many $ (char' 'a') <|> (char' 'b')
+      
+    runParserT chars () "" "aabb"
 
 ## Expression Parsers
 
@@ -153,6 +165,8 @@ Parsec(T) is a state monad, and will carry around user state as well as the pars
           , Infix (char '-' >> return (-)) AssocRight ]
         , [ Prefix $ char '-' >> return negate ]
         ] atom
+        
+    parseTest numExpr "(1+2*4)/3"
       
 ## Language Definitions
 	
@@ -170,3 +184,4 @@ Parsec(T) is a state monad, and will carry around user state as well as the pars
        -- ...
 
     parseTest stringLiteral' "\"Test\""
+    parseTest (lexeme' stringLiteral') "\"Test\" {-# Comment #-}"
