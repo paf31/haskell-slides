@@ -2,6 +2,17 @@
 
 !
 
+## Agenda
+
+- Basic Haskell Intro
+- Constraint Solving
+- Extended Example + lots of code
+- Questions
+
+Please interrupt
+
+!
+
 ## Haskell
 
 Haskell is 
@@ -115,6 +126,22 @@ data Foo = Foo String | Bar Int
 
 !
 
+## Do Notation
+
+Provides sequencing of computation
+
+```
+do x <- comp1
+   y <- comp2 x
+   return $ x + y
+   
+do x <- comp1
+   let y = comp2 x
+   return $ x + y
+```
+
+!
+
 ## Constraint Problems
 
 Solve larger problems using local information
@@ -190,6 +217,45 @@ But type inference can fail!
     typeOf :: Tm -> Maybe Ty
 
     data Maybe a = Nothing | Just a
+
+!
+
+## Side Effects
+
+We need two types of side effects
+
+- State
+- Failure (Maybe)
+
+We can create a new type which allows both types of side effect. Call it `Check`:
+
+```
+newtype Check = Check { ... }
+```
+
+!
+
+## Side Effects
+
+We'll use some basic values with side effects:
+
+````
+noType :: Check a
+
+fresh :: Check Int
+```
+
+!
+
+## Side Effects
+
+And we can run side effects to get a result:
+
+```
+runCheck :: Check a -> Maybe a
+```
+
+`runCheck` forgets the final state, but can still fail
 
 !
 
@@ -287,12 +353,38 @@ Solution
 
 !
 
+## Unification
+
+- Two structures are known to be equal 
+- Different parts of each are missing
+- Generates a set of constraints
+
+E.g. if
+
+```
+((a -> b) -> c) = (d -> e -> f)
+```
+
+then we know
+
+```
+d = a -> b
+```
+
+and
+
+```
+c = e -> f
+```
+
+!
+
 ## Factoring
 
 We want to split `typeOf` into
 
-    collect :: Tm -> Maybe ([Constraint], Ty)
-    solve :: [Constraint] -> Maybe Solution
+    collect :: Tm -> Check ([Constraint], Ty)
+    solve :: [Constraint] -> Check Solution
     substitute :: Solution -> Ty -> Ty
 
 !
@@ -334,7 +426,7 @@ Modify
 ## High Level
 
     typeOf :: Tm -> Maybe Ty
-    typeOf tm = do
+    typeOf tm = runCheck $ do
       (cs, ty) <- collect tm
       sol <- solve cs
       return $ substitute sol ty
@@ -345,7 +437,7 @@ Modify
 
 Collect constraints by *case analysis*
 
-    collect :: Tm -> Maybe ([Constraint], Ty)
+    collect :: Tm -> Check ([Constraint], Ty)
 
 !
 
@@ -354,22 +446,24 @@ Collect constraints by *case analysis*
     import Data.Map
 
     type Env = Map String Unknown
+	
+	empty :: Env
 
-    collect :: Tm -> Maybe [Constraint]
+    collect :: Tm -> Check [Constraint]
     collect = collect' empty
       where collect' :: Env -> 
                         Tm ->
-                        Maybe ([Constraint], Ty)
+                        Check ([Constraint], Ty)
 
 !
 
 ## collect'
 
     collect' :: Env -> Tm -> 
-                Maybe ([Constraint], Ty)
+                Check ([Constraint], Ty)
     collect' env (TmVar nm) = 
       case lookup nm env of
-        Nothing -> Nothing
+        Nothing -> noType
         Just u -> return ([], TyUnk u)
 
 !
@@ -377,9 +471,9 @@ Collect constraints by *case analysis*
 ## collect'
 
     collect' :: Env -> Tm -> 
-                Maybe ([Constraint], Ty)
+                Check ([Constraint], Ty)
     collect' env (TmAbs nm body) = do
-      let u = fresh
+      u <- fresh
       collect' (M.insert nm u env) body
 
 !
@@ -387,11 +481,11 @@ Collect constraints by *case analysis*
 ## collect'
 
     collect' :: Env -> Tm -> 
-                Maybe [Constraint]
+                Check [Constraint]
     collect' env (TmApp tm1 tm2) = do
       (cs1, ty1) <- collect' env tm1
       (cs2, ty2) <- collect' env tm2
-      let u1 = fresh
+      u1 <- fresh
       -- ty1 is a function type
       let cs3 = [Constraint u1 (TyArr u2 u3), Constraint u1 ty1]
       -- ty2 matches ty1
@@ -405,20 +499,20 @@ Collect constraints by *case analysis*
     bottom :: Solution
     bottom = Solution TyUnk
 
-    solve :: [Constraint] -> Maybe Solution
+    solve :: [Constraint] -> Check Solution
     solve = refine bottom
       where
       refine :: Solution -> [Constraint] ->
-                Maybe Solution
+                Check Solution
 
 !
 
 ## refine
 
-    refine s [] = Just s
+    refine s [] = return s
     refine (c:cs) = do
       let s' = replace c . s
-          cs' = replaceC c cs
+      cs' <- replaceC c cs
       refine s' cs'
 
 !
@@ -436,7 +530,7 @@ Collect constraints by *case analysis*
 
     replaceC :: Constraint -> 
                 [Constraint] -> 
-                Maybe [Constraint]
+                Check [Constraint]
     replaceC _ [] = Just []
     replaceC c@(Constraint u t) (Constraint u1 t1 : cs) 
       | u == u1 = (++) <$> unify t t1 <*> replaceC c cs
@@ -447,7 +541,7 @@ Collect constraints by *case analysis*
 
 ## unify
 
-    unify :: Ty -> Ty -> Maybe [Constraint]
+    unify :: Ty -> Ty -> Check [Constraint]
     unify (TyVar v1) (TyVar v2) 
       | v1 == v2 = Just []
     unify (TyArr t1 t2) (TyArr t3 t4) = 
@@ -458,22 +552,22 @@ Collect constraints by *case analysis*
       return [Constraint u t]
     unify t1 t2@(TyUnk u) = 
       unify t2 t1
-    unify _ _ = Nothing
+    unify _ _ = noType
 
 !
 
 ## occursCheck
 
-    occursCheck :: Unknown -> Ty -> Maybe ()
+    occursCheck :: Unknown -> Ty -> Check ()
     occursCheck u (TUnk u1) 
       | u == u1 = return ()
     occursCheck u t = go u t
       where
       go u (TyUnk u1) 
-        | u == u1 = Nothing
-      go u (TyArr t1 t2) = 
-        const () <$> occursCheck u t1 
-                 <*> occursCheck u t2
+        | u == u1 = noType
+      go u (TyArr t1 t2) = do
+        occursCheck u t1 
+        occursCheck u t2
       go _ _ = return ()
 
 !
