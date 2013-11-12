@@ -6,9 +6,69 @@
 
 Haskell is 
 
-- Lazy by default
-- Purely functional
+- Functional
 - Statically typed
+- Lazy
+- General Purpose
+
+!
+
+## Resources
+
+- Reddit Haskell
+- Freenode IRC #haskell
+- LA Haskell
+- Books
+  - Learn You A Haskell For Great Good!
+  - Real World Haskell
+  - Both available for free online
+
+!
+
+## Hello, Haskell!
+
+```
+main :: IO ()
+main = putStrLn "Hello, World!"
+```
+
+!
+
+## Hello, Haskell!
+
+```
+main :: IO ()
+main = do
+  putStrLn "What is your name?"
+  name <- getLine
+  putStrLn $ "Hello, " ++ name ++ "!"
+```
+
+!
+
+## Hello, Haskell!
+
+```
+data TimeOfDay = Morning | Afternoon | Evening 
+
+timeOfDay :: IO DayPart
+timeOfDay :: ...
+
+greeting :: TimeOfDay -> String -> String
+greeting Morning name = 
+  "Good Morning, " ++ name
+greeting Afternoon name = 
+  "Good Afternoon, " ++ name
+greeting Evening name = 
+  "Good Evening, " ++ name
+
+main :: IO ()
+main = do
+  tod <- timeOfDay
+  putStrLn "What is your name?"
+  name <- getLine
+  putStrLn $ greeting tod name
+```
 
 !
 
@@ -22,11 +82,85 @@ Haskell encourages
 
 !
 
-## Example
+## Types
 
-## λx. λy. λz. x z (y z)
+Functions
 
-How can we infer the type?
+```
+a -> b
+a -> b -> c
+(a -> b) -> c
+```
+
+!
+
+## Types
+
+Tuples
+
+```
+(a, b)
+(a, b, c)
+```
+
+!
+
+## Types
+
+Algebraic Data Types
+
+```
+data Foo = Foo String | Bar Int
+```
+
+!
+
+## Constraint Problems
+
+Solve larger problems using local information
+
+E.g. 
+
+- Type Inference
+- Logic Programming
+
+!
+
+## Constraint Problems
+
+- Start with a set of constraints involving variables
+- Solve by substitution
+
+!
+
+## Lambda Calculus
+
+Terms are
+
+- Abstractions (`λx. t`)
+- Applications (`t1 t2`)
+- Variables (`x`, `y`, `z`)
+
+!
+
+## Simply Typed Lambda Calculus
+
+Types are
+
+- Type variables (`A`, `B`, `C`)
+- Functions (`t -> t`)
+
+!
+
+## Examples
+
+```
+λx. λy. x
+
+λx. λy. λz. x z (y z)
+```
+
+How can we infer the types?
 
 !
 
@@ -55,73 +189,94 @@ But type inference can fail!
 
     typeOf :: Tm -> Maybe Ty
 
+    data Maybe a = Nothing | Just a
+
 !
 
-# Example
+## Example
 
-## λx. λy. λz. x z (y z)
+```
+λx. λy. λz. x z (y z)
+```
 
 Notice:
 
-- typeOf x = TyArr (typeof z) ?
-- typeOf y = TyArr (typeof z) ?
-- etc.
+```
+typeOf x = TyArr (typeof z) ?
+typeOf y = TyArr (typeof z) ?
+```
+
+Etc.
 
 !
 
-# Example
+## Example
 
 Generate unknowns for each variable
 
-- typeOf x = u1
-- typeOf y = u2
-- typeOf z = u3
+```
+typeOf x = u1
+typeOf y = u2
+typeOf z = u3
+```
 
 !
 
-# Example
+## Example
 
-- u1 = TyArr u3 u4
-- u4 = TyArr u5 u6
-- u2 = TyArr u3 u5
+```
+u1 = TyArr u3 u4
+u4 = TyArr u5 u6
+u2 = TyArr u3 u5
+```
 
 ---
 
 !
 
-# Example
+## Example
 
-- u4 = TyArr u5 u6
-- u2 = TyArr u3 u5
-
----
-
-- u1 = TyArr u3 u4
-
-!
-
-# Example
-
-- u2 = TyArr u3 u5
+```
+u4 = TyArr u5 u6
+u2 = TyArr u3 u5
+```
 
 ---
 
-- u1 = TyArr u3 (TyArr u5 u6)
-- u4 = TyArr u5 u6
+```
+u1 = TyArr u3 u4
+```
 
 !
 
-# Example
+## Example
+
+```
+u2 = TyArr u3 u5
+```
 
 ---
 
-- u1 = TyArr u3 (TyArr u5 u6)
-- u4 = TyArr u5 u6
-- u2 = TyArr u3 u5
+```
+u1 = TyArr u3 (TyArr u5 u6)
+u4 = TyArr u5 u6
+```
 
 !
 
-# Example
+## Example
+
+---
+
+```
+u1 = TyArr u3 (TyArr u5 u6)
+u4 = TyArr u5 u6
+u2 = TyArr u3 u5
+```
+
+!
+
+## Example
 
 Solution
 
@@ -285,7 +440,8 @@ Collect constraints by *case analysis*
     replaceC _ [] = Just []
     replaceC c@(Constraint u t) (Constraint u1 t1 : cs) 
       | u == u1 = (++) <$> unify t t1 <*> replaceC c cs
-      | otherwise = (:) <$> pure (Constraint u1 (replace c t1)) <*> replaceC c cs
+      | otherwise = (:) <$> pure (Constraint u1 (replace c t1)) 
+                        <*> replaceC c cs
 
 !
 
