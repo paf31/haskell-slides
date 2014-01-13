@@ -8,6 +8,11 @@ SYB is an approach to generic programming which uses type classes to simplify
 
 Other similar libraries include `uniplate`, `multiplate`, `GHC.Generics`.
 
+## Getting Started
+
+    import Data.Data
+    import Data.Generics
+
 ## Use Case
 
 Generic programming libraries are appropriate when:
