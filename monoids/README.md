@@ -172,6 +172,71 @@ sconcat :: (Semigroup s) => NonEmpty s -> s
 
 Are semigroups useful? Yes! E.g. applicative validation.
 
+# Functors
+
+Note that we can lift a function of one argument over lists:
+
+```haskell
+ghci> let shout = (++ "!")
+ghci> map shout (words "Hello World")
+
+["Hello!", "World!"]
+```
+
+The `fmap` function generalizes `map` to other interesting structures:
+
+```haskell
+map  ::                (a -> b) -> [a] -> [b]
+
+fmap :: (Functor f) => (a -> b) -> f a -> f b
+```
+
+We can map over lists, or `Maybe`, or `Either a`, or `Tuple a`:
+
+```haskell
+ghci> fmap (+ 1) Nothing
+Nothing
+
+ghci> fmap (+ 1) (Just 10)
+Just 11
+
+ghci> fmap (* 2) (Left 10)
+Left 10
+
+ghci> fmap (+ 1) (Right 10)
+Right 20
+
+ghci> fmap (* 2) (10, 20)
+(10, 40)
+```
+
+Each of these _type constructors_ is an example of a _functor_.
+
+A functor consists of a mapping from types to types, and a function `fmap` satisfying these laws:
+
+- Identity: `forall x. fmap id x = x`
+- Composition : `forall f g. fmap (f . g) = fmap f . fmap g`
+
+A good intuition for functors is as a class of _containers_. But not all `Functor`s are containers:
+
+```haskell
+ghci> fmap (+ 1) (\n -> n * n) 10
+101
+
+ghci> flip runCont print $ fmap length $ callCC $ \k -> k "Boo!"
+4
+```
+
+A `Functor` is just something which supports lifting of functions of a single argument.
+
+Another example of a functor is `IO`.
+
+```haskell
+ghci> length `fmap` getLine 
+Hello World
+11
+```
+
 # IO
 
 ## Modelling the World
@@ -259,6 +324,6 @@ cat :: IO a
 
 GHC's `IO` is like our `World` model of IO, but where the monad can only be interpreted _by the Haskell runtime_.
 
-# Functors
+You can never actually _perform_ IO in Haskell, only _request_ that the runtime do some work on your behalf. The `IO` monad is a tool for building interesting requests.
 
 
