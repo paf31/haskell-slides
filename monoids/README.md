@@ -1,5 +1,9 @@
 # Monoids
 
+https://hackage.haskell.org/package/validation
+
+https://hackage.haskell.org/package/semigroups
+
 ## Motivation
 
 Suppose we want to concatenate a list of strings:
