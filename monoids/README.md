@@ -1,5 +1,7 @@
 # Monoids
 
+## Links
+
 https://hackage.haskell.org/package/validation
 
 https://hackage.haskell.org/package/semigroups
