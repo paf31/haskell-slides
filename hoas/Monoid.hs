@@ -1,6 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import Data.String
+import Data.Monoid
 
 class (IsString a, Monoid a) => Document a where
   indent :: Int -> a -> a
@@ -10,6 +13,12 @@ data PlainText = PlainText { docWidth :: Int, docLines :: [String] } deriving (S
 
 render :: PlainText -> String
 render = unlines . docLines
+
+columns :: (Document a) => a
+columns = column1 `beside` " " `beside` column2
+  where
+  column1 = "Haskell"    <> "C"          <> "Prolog"
+  column2 = "Functional" <> "Imperative" <> "Logic"
 
 instance IsString PlainText where
   fromString s = PlainText (length s) [s]
