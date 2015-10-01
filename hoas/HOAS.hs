@@ -5,7 +5,7 @@ class HOAS f where
   lam :: (f a -> f b) -> f (a -> b)
 
 konst :: (HOAS f) => f (a -> b -> a)
-konst = lam $ \a -> lam $ \_ -> a
+konst = lam $ \a -> lam $ const a
 
 app :: (HOAS f) => f (a -> (a -> b) -> b)
 app = lam $ \a -> lam $ \f -> f $$ a
